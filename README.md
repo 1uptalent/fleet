@@ -21,7 +21,9 @@ host3 ansible_ssh_port=2253 host_id=3 other_hosts="192.168.50.101"
 ##Configure the servers as docker's hosts
 
 ```
-ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook --user=vagrant --private-key=~/.vagrant.d/insecure_private_key --inventory-file=vagrant_hosts ansible-playbooks/docker.yml
+vagrant up
+
+ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook --user=vagrant --private-key=~/.vagrant.d/insecure_private_key --inventory-file=inventory-vagrant ansible-playbooks/docker.yml
 ```
 
 
