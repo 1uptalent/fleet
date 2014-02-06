@@ -4,6 +4,27 @@ fleet
 WIP for managing a collection of docker hosts
 
 
+#Vagrant
+
+##Prerequisites
+
+* VM must be connected using a private network
+* Every hostname must resolve to 127.0.0.1 (adding `127.0.0.1 hostX` do the work)
+* The inventory file `vagrant_hosts` must include the ssh port, ssh user and ssh private key
+
+```
+host1 host_id=1 ansible_ssh_port=2251 ansible_ssh_user=vagrant ansible_ssh_private_key_file=/Users/username/.vagrant.d/insecure_private_key other_hosts="192.168.50.102 192.168.50.103"
+host2 host_id=2 ansible_ssh_port=2252 ansible_ssh_user=vagrant ansible_ssh_private_key_file=/Users/username/.vagrant.d/insecure_private_key other_hosts="192.168.50.101"
+host3 host_id=3 ansible_ssh_port=2253 ansible_ssh_user=vagrant ansible_ssh_private_key_file=/Users/username/.vagrant.d/insecure_private_key other_hosts="192.168.50.101"
+```
+
+##Configure the servers as docker's hosts
+
+```
+ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook --inventory-file=vagrant_hosts ansible-playbooks/docker.yml
+```
+
+
 #Digital Ocean
 
 ##Prerequisites

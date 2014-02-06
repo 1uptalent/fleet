@@ -1,6 +1,5 @@
 ---
 - hosts: all
-  remote_user: ubuntu
   sudo: yes
   vars:
     openvswitch_deps:
@@ -39,19 +38,19 @@
       tags: network repo
 
     - name: Copy configuration for bridges and tunnels
-      copy: src=../provisioning_scripts/prepare_docker_network.sh dest=/home/ubuntu/prepare_docker_network.sh owner=ubuntu group=ubuntu mode=0755
+      copy: src=../provisioning_scripts/prepare_docker_network.sh dest=/tmp/prepare_docker_network.sh mode=0755
       tags: network configure
 
     - name: Configure bridges and tunnels
-      command: /home/ubuntu/prepare_docker_network.sh {{host_id}} "{{other_hosts}}"
+      command: /tmp/prepare_docker_network.sh {{host_id}} "{{other_hosts}}"
       tags: network configure
 
     - name: Copy routes config
-      copy: src=../provisioning_scripts/route_docker_network.sh dest=/home/ubuntu/route_docker_network.sh owner=ubuntu group=ubuntu mode=0755
+      copy: src=../provisioning_scripts/route_docker_network.sh dest=/tmp/route_docker_network.sh mode=0755
       tags: network configure
 
     - name: Configure docker routes
-      command: /home/ubuntu/route_docker_network.sh
+      command: /tmp/route_docker_network.sh
       tags: network configure
 
     - name: Docker dependencies
