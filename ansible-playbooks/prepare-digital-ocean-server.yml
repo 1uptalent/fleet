@@ -1,0 +1,4 @@
+---
+- include: ubuntu-user.yml
+- include: ubuntu-mirrors.yml
+- include: secure-system.yml

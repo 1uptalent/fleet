@@ -1,0 +1,13 @@
+---
+- hosts: all
+  remote_user: ubuntu
+  sudo: yes
+  tasks:
+
+    - name: Use UK mirros, ES mirrors are painfully slow
+      command: sed -i -e 's/es.archive.ubuntu.com/mirror.math.ucdavis.edu/g' /etc/apt/sources.list
+      tags: config-mirrors
+
+    - name: Update packages sources
+      apt: update_cache=yes
+      tags: config-mirrors

@@ -1,0 +1,20 @@
+---
+- hosts: all
+  remote_user: root
+  tasks:
+
+    - name: Ubuntu user as sudoer
+      user: name=ubuntu home=/home/ubuntu shell=/bin/bash
+      tags: ensure-user
+
+    - name: Configure sudoers
+      lineinfile: dest=/etc/sudoers.d/ubuntu create=yes state=present line="ubuntu ALL=(ALL) NOPASSWD:ALL" regexp='^ubuntu'
+      tags: config-sudoers
+
+    - name: SSH config directory
+      file: path=/home/ubuntu/.ssh owner=ubuntu group=ubuntu state=directory mode=0744
+      tags: ssh
+
+    - name: Set ssh keys to user
+      copy: src=../ssh_keys/authorized_keys_for_ubuntu dest=/home/ubuntu/.ssh/authorized_keys owner=ubuntu group=ubuntu mode=0644
+      tags: ssh-keys

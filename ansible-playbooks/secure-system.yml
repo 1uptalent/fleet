@@ -1,0 +1,35 @@
+---
+- hosts: all
+  remote_user: ubuntu
+  sudo: yes
+  vars:
+    security_packages:
+      - ufw
+      - fail2ban
+    ufw_rules:
+      - logging low
+      - allow 22/tcp
+
+  tasks:
+
+    - name: Ensure secure packages
+      apt: pkg={{ item }} state=present
+      with_items: security_packages
+      tags: install
+
+    - name: Firewall configuration
+      command:    ufw {{ item }}
+      with_items: ufw_rules
+      tags: config
+
+    - name: Firewall status
+      action: shell yes | ufw enable
+      tags: activate
+
+    - name: Attacks protection configuration
+      lineinfile: dest=/etc/ssh/sshd_config state=present regexp='PermitRootLogin yes' line='PermitRootLogin no'
+      tags: config
+
+    - name: Attacks protection
+      service: name=ssh state=restarted
+      tags: activate
