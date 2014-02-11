@@ -29,12 +29,12 @@
       tags: firewall config
 
     - name: OpenVSwitch dependencies
-      apt: pkg={{ item }} state=latest
+      apt: pkg={{ item }} state=present update_cache=yes cache_valid_time=14400
       with_items: openvswitch_deps
       tags: network repo
 
     - name: Install OpenVSwitch
-      apt: pkg=openvswitch-switch state=latest update_cache=yes
+      apt: pkg=openvswitch-switch state=present update_cache=yes cache_valid_time=14400
       tags: network repo
 
     - name: Copy configuration for bridges and tunnels
@@ -44,6 +44,7 @@
     - name: Configure bridges and tunnels
       command: /tmp/prepare_docker_network.sh {{host_id}} "{{other_hosts}}"
       tags: network configure
+      when: ansible_docker0 is not defined
 
     - name: Copy routes config
       copy: src=../provisioning_scripts/route_docker_network.sh dest=/tmp/route_docker_network.sh mode=0755
@@ -54,12 +55,33 @@
       tags: network configure
 
     - name: Docker dependencies
-      apt: pkg={{ item }} state=latest
+      apt: pkg={{ item }} state=present update_cache=yes cache_valid_time=14400
       with_items: docker_deps
       tags: docker repo
 
     - name: Add docker repository key
-      apt_key: url=https://get.docker.io/gpg state=present
+      #apt_key: url=https://get.docker.io/gpg state=present
+      apt_key: |
+        state=present
+        data="-----BEGIN PGP PUBLIC KEY BLOCK-----
+        Version: GnuPG v1.4.14 (GNU/Linux)
+        
+        mQENBFIOqEUBCADsvqwefcPPQArws9jHF1PaqhXxkaXzeE5uHHtefdoRxQdjoGok
+        HFmHWtCd9zR7hDpHE7Q4dwJtSFWZAM3zaUtlvRAgvMmfLm08NW9QQn0CP5khjjF1
+        cgckhjmzQAzpEHO5jiSwl0ZU8ouJrLDgmbhT6knB1XW5/VmeECqKRyhlEK0zRz1a
+        XV+4EVDySlORmFyqlmdIUmiU1/6pKEXyRBBVCHNsbnpZOOzgNhfMz8VE8Hxq7Oh8
+        1qFaFXjNGCrNZ6xr/DI+iXlsZ8urlZjke5llm4874N8VPUeFQ/szmsbSqmCnbd15
+        LLtrpvpSMeyRG+LoTYvyTG9QtAuewL9EKJPfABEBAAG0OURvY2tlciBSZWxlYXNl
+        IFRvb2wgKHJlbGVhc2Vkb2NrZXIpIDxkb2NrZXJAZG90Y2xvdWQuY29tPokBOAQT
+        AQIAIgUCUg6oRQIbLwYLCQgHAwIGFQgCCQoLBBYCAwECHgECF4AACgkQ2Fdqi6iN
+        IenM+QgAnOiozhHDAYGO92SmZjib6PK/1djbrDRMreCT8bnzVpriTOlEtARDXsmX
+        njKSFa+HTxHi/aTNo29TmtHDfUupcfmaI2mXbZt1ixXLuwcMv9sJXKoeWwKZnN3i
+        9vAM9/yAJz3aq+sTXeG2dDrhZr34B3nPhecNkKQ4v6pnQy43Mr59Fvv5CzKFa9oZ
+        IoZf+Ul0F90HSw5WJ1NsDdHGrAaHLZfzqAVrqHzazw7ghe94k460T8ZAaovCaTQV
+        HzTcMfJdPz/uTim6J0OergT9njhtdg2ugUj7cPFUTpsxQ1i2S8qDEQPL7kabAZZo
+        Pim0BXdjsHVftivqZqfWeVFKMorchQ==
+        =fRgo
+        -----END PGP PUBLIC KEY BLOCK-----"
       tags: docker repo
 
     - name: Add docker repository
@@ -67,6 +89,6 @@
       tags: docker repo
 
     - name: Install docker
-      apt: pkg=lxc-docker state=latest update_cache=yes
+      apt: pkg=lxc-docker state=present update_cache=yes cache_valid_time=14400
       tags: docker repo
 
