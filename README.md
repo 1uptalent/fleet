@@ -9,7 +9,7 @@ WIP for managing a collection of docker hosts
 ##Prerequisites
 
 * VM must be connected using a private network
-* Every hostname must resolve to 127.0.0.1 (adding `127.0.0.1 hostX` do the work)
+* Every hostname must resolve to 127.0.0.1 (adding `127.0.0.1 hostX` to `/etc/hosts` do the work)
 * The inventory file `inventory-vagrant` must include the ssh port forwarded in Vagrantfile
 
 ```
