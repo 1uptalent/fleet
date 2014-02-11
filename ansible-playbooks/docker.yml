@@ -88,7 +88,99 @@
       apt_repository: repo='deb http://get.docker.io/ubuntu docker main' state=present
       tags: docker repo
 
+    - name: Create the docker group
+      user: name=docker state=present
+
+    - name: Add ansible user to the docker group
+      user: name={{ ansible_ssh_user }} groups=docker append=true
+
     - name: Install docker
       apt: pkg=lxc-docker state=present update_cache=yes cache_valid_time=14400
       tags: docker repo
+
+    - name: Refresh facts to learn about the new network interfaces
+      setup: ''
+
+    - name: Reconfigure docker
+      lineinfile: >
+        dest=/etc/init/docker.conf
+        state=present
+        regexp='( *DOCKER_OPTS=).*' 
+        line='\1"--dns {{ facter_ipaddress_docker0 }}"'
+        backrefs=yes
+
+    - name: Apply docker configuration
+      shell: stop docker ; start docker
+
+    - name: Pull Skydns
+      command: docker pull crosbymichael/skydns
+
+    - name: Pull Skydock
+      command: docker pull crosbymichael/skydock
+
+    - name: Install skydns master
+      command: >
+        docker run -d 
+                   -p {{ facter_ipaddress_docker0 }}:53:53/udp 
+                   -p {{ facter_ipaddress_docker0 }}:8080:8080/tcp 
+                   -name skydns
+                   --entrypoint /bin/bash
+                   crosbymichael/skydns
+                   -c 'skydns -http $(hostname -i):8080 -dns $(hostname -i):53 -nameserver 8.8.8.8:53 -domain docker'
+      when: dns_leader is not defined
+
+    - name: Wait for master
+      wait_for: host={{ facter_ipaddress_docker0 }} port=8080 timeout=30
+      when: dns_leader is not defined
+
+    - name: Install skydock on master
+      command: >
+        docker run -d -v /var/run/docker.sock:/docker.sock 
+                   -name skydock 
+                   -link skydns:skydns 
+                   crosbymichael/skydock 
+                   -ttl 30 
+                   -s /docker.sock 
+                   -environment dev 
+                   -domain docker
+      when: dns_leader is not defined
+
+    - name: Install skydns on slaves
+      command: >
+        docker run -d -p {{ facter_ipaddress_docker0 }}:53:53/udp 
+                   -name skydns
+                   --dns {{ dns_leader }}
+                   --entrypoint bash
+                   crosbymichael/skydns
+                   -c 'skydns -http $(hostname -i):8080 -dns $(hostname -i):53 -nameserver 8.8.8.8:53 -domain docker -join master.docker:8080'
+      when: dns_leader is defined
+
+    - name: Install skydock on slaves
+      #
+      # BUG: This should work, but the skydns api client does not handle the redirection to the master
+      # See: https://github.com/skynetservices/skydns/pull/79
+      #
+      # command: >
+      #   docker run -d -v /var/run/docker.sock:/docker.sock 
+      #              -name skydock 
+      #              -link skydns:skydns 
+      #              crosbymichael/skydock 
+      #              -ttl 30 
+      #              -s /docker.sock 
+      #              -environment dev 
+      #              -domain docker
+
+      #
+      # WORKAROUND: Set the skydnsUrl to the master. I guess this can break if a new master is elected
+      command: >
+        docker run -d -v /var/run/docker.sock:/docker.sock 
+                   -name skydock 
+                   crosbymichael/skydock 
+                   --skydns http://master.docker:8080
+                   -ttl 30 
+                   -s /docker.sock 
+                   -environment dev 
+                   -domain docker
+      when: dns_leader is defined
+
 
