@@ -1,0 +1,5 @@
+---
+  openvswitch_dependencies:
+    - linux-headers-3.11.0-12-generic
+    - openvswitch-datapath-dkms
+    - bridge-utils

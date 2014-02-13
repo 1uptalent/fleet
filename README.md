@@ -3,6 +3,11 @@ fleet
 
 WIP for managing a collection of docker hosts
 
+# Ansible
+
+```
+ansible-galaxy install angstwad.docker_ubuntu
+```
 
 #Vagrant
 

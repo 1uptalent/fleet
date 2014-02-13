@@ -1,0 +1,30 @@
+---
+- name: Check for bridge
+  shell: ovs-vsctl br-exists {{ ovs_bridge_name }} || echo 'NO'
+  register: bridge_already_exists
+
+- name: Create an ovs bridge
+  command: ovs-vsctl add-br {{ ovs_bridge_name }}
+  when: bridge_already_exists.stdout == 'NO'
+
+- name: Check for gre tunnel
+  shell: ovs-vsctl list-ports {{ovs_bridge_name}} | grep gre{{ item.0 }} || echo 'NO'
+  register: gre_already_exists
+  with_indexed_items: ${gre_tunnel_to_hosts}
+
+- debug: var=gre_tunnel_to_hosts
+- debug: var=gre_already_exists
+  with_indexed_items: ${gre_tunnel_to_hosts}
+
+- name: Create a tunnel between bridges
+  command: ovs-vsctl add-port {{ ovs_bridge_name }} gre{{ item.0 }} -- set interface gre{{ item.0 }} type=gre options:remote_ip={{ item.1 }}
+  with_indexed_items: ${gre_tunnel_to_hosts}
+  when: gre_already_exists.results[ item.0 ].stdout == 'NO'
+
+- name: Check for host interface
+  shell: ovs-vsctl list-ports {{ ovs_bridge_name }} | grep {{ ovs_host_internal_iface}} || echo 'NO'
+  register: host_interface_already_exists
+
+- name: Connect host interface to the bridge
+  command: ovs-vsctl add-port {{ ovs_bridge_name }} {{ ovs_host_internal_iface }} -- set interface {{ ovs_host_internal_iface }} type=internal
+  when: host_interface_already_exists.stdout == 'NO'

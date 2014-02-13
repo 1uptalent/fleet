@@ -2,16 +2,39 @@
 - hosts: all
   sudo: yes
   vars:
-    openvswitch_deps:
-      - linux-headers-3.11.0-12-generic
-      - openvswitch-datapath-dkms
-      - bridge-utils
-    docker_deps:
-      - python-software-properties
-      - python-apt
-      - python-pycurl
-  tasks:
+    bridge_network: 10.10.{{ host_id | mandatory }}.0
+    bridge_address: 10.10.{{ host_id }}.1
+    bridge_mask: 255.255.255.0
+    union_address: 192.168.250.{{ host_id}}
+    union_mask: 255.255.255.0
+    route_network: 10.10.0.0
+    route_netmask: 255.255.0.0 
+  roles:
+    - role: docker_cluster
+      gre_tunnel_to_hosts: "{{ other_hosts.split() }}"
 
+    - role: bennojoy.network_interface
+      network_ether_interfaces:
+        - device: tep0
+          bootproto: static
+          address: "{{ union_address }}"
+          netmask: "{{ union_mask }}"
+          route:
+            - network: "{{ route_network }} "
+              netmask: "{{ route_netmask }}"
+              gateway: "{{ union_address }}"
+              device: tep0
+      network_bridge_interfaces:
+        - device: docker0
+          type: bridge
+          address: "{{ bridge_address }}"
+          netmask: "{{ bridge_mask }}"
+          bootproto: static
+          ports: 
+            - "{{ ovs_bridge_name }}"
+    - role: angstwad.docker_ubuntu
+
+  tasks:
     - name: Firewall configuration
       command: ufw allow from 10.10.0.0/16
       tags: firewall config
@@ -28,75 +51,8 @@
       command: ufw reload
       tags: firewall config
 
-    - name: OpenVSwitch dependencies
-      apt: pkg={{ item }} state=present update_cache=yes cache_valid_time=14400
-      with_items: openvswitch_deps
-      tags: network repo
-
-    - name: Install OpenVSwitch
-      apt: pkg=openvswitch-switch state=present update_cache=yes cache_valid_time=14400
-      tags: network repo
-
-    - name: Copy configuration for bridges and tunnels
-      copy: src=../provisioning_scripts/prepare_docker_network.sh dest=/tmp/prepare_docker_network.sh mode=0755
-      tags: network configure
-
-    - name: Configure bridges and tunnels
-      command: /tmp/prepare_docker_network.sh {{host_id}} "{{other_hosts}}"
-      tags: network configure
-      when: ansible_docker0 is not defined
-
-    - name: Copy routes config
-      copy: src=../provisioning_scripts/route_docker_network.sh dest=/tmp/route_docker_network.sh mode=0755
-      tags: network configure
-
-    - name: Configure docker routes
-      command: /tmp/route_docker_network.sh
-      tags: network configure
-
-    - name: Docker dependencies
-      apt: pkg={{ item }} state=present update_cache=yes cache_valid_time=14400
-      with_items: docker_deps
-      tags: docker repo
-
-    - name: Add docker repository key
-      #apt_key: url=https://get.docker.io/gpg state=present
-      apt_key: |
-        state=present
-        data="-----BEGIN PGP PUBLIC KEY BLOCK-----
-        Version: GnuPG v1.4.14 (GNU/Linux)
-        
-        mQENBFIOqEUBCADsvqwefcPPQArws9jHF1PaqhXxkaXzeE5uHHtefdoRxQdjoGok
-        HFmHWtCd9zR7hDpHE7Q4dwJtSFWZAM3zaUtlvRAgvMmfLm08NW9QQn0CP5khjjF1
-        cgckhjmzQAzpEHO5jiSwl0ZU8ouJrLDgmbhT6knB1XW5/VmeECqKRyhlEK0zRz1a
-        XV+4EVDySlORmFyqlmdIUmiU1/6pKEXyRBBVCHNsbnpZOOzgNhfMz8VE8Hxq7Oh8
-        1qFaFXjNGCrNZ6xr/DI+iXlsZ8urlZjke5llm4874N8VPUeFQ/szmsbSqmCnbd15
-        LLtrpvpSMeyRG+LoTYvyTG9QtAuewL9EKJPfABEBAAG0OURvY2tlciBSZWxlYXNl
-        IFRvb2wgKHJlbGVhc2Vkb2NrZXIpIDxkb2NrZXJAZG90Y2xvdWQuY29tPokBOAQT
-        AQIAIgUCUg6oRQIbLwYLCQgHAwIGFQgCCQoLBBYCAwECHgECF4AACgkQ2Fdqi6iN
-        IenM+QgAnOiozhHDAYGO92SmZjib6PK/1djbrDRMreCT8bnzVpriTOlEtARDXsmX
-        njKSFa+HTxHi/aTNo29TmtHDfUupcfmaI2mXbZt1ixXLuwcMv9sJXKoeWwKZnN3i
-        9vAM9/yAJz3aq+sTXeG2dDrhZr34B3nPhecNkKQ4v6pnQy43Mr59Fvv5CzKFa9oZ
-        IoZf+Ul0F90HSw5WJ1NsDdHGrAaHLZfzqAVrqHzazw7ghe94k460T8ZAaovCaTQV
-        HzTcMfJdPz/uTim6J0OergT9njhtdg2ugUj7cPFUTpsxQ1i2S8qDEQPL7kabAZZo
-        Pim0BXdjsHVftivqZqfWeVFKMorchQ==
-        =fRgo
-        -----END PGP PUBLIC KEY BLOCK-----"
-      tags: docker repo
-
-    - name: Add docker repository
-      apt_repository: repo='deb http://get.docker.io/ubuntu docker main' state=present
-      tags: docker repo
-
-    - name: Create the docker group
-      user: name=docker state=present
-
     - name: Add ansible user to the docker group
       user: name={{ ansible_ssh_user }} groups=docker append=true
-
-    - name: Install docker
-      apt: pkg=lxc-docker state=present update_cache=yes cache_valid_time=14400
-      tags: docker repo
 
     - name: Refresh facts to learn about the new network interfaces
       setup: ''

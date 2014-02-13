@@ -1,0 +1,3 @@
+---
+ovs_bridge_name: br0
+ovs_host_internal_iface: tep0
